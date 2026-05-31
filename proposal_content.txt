@@ -1,0 +1,20 @@
+﻿At line:1 char:231
++ ... word/document.xml' };  = [System.IO.StreamReader]::new(.Open());  = . ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:249
++ ...  };  = [System.IO.StreamReader]::new(.Open());  = .ReadToEnd(); .Clos ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:259
++ ... stem.IO.StreamReader]::new(.Open());  = .ReadToEnd(); .Close(); .Clos ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:269
++ ... .IO.StreamReader]::new(.Open());  = .ReadToEnd(); .Close(); .Close();
++                                                                        ~
+An expression was expected after '('.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordEx 
+   ception
+    + FullyQualifiedErrorId : ExpectedExpression
+ 

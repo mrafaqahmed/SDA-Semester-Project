@@ -1,0 +1,72 @@
+@startuml SDA-Pro_Component_Diagram
+!theme plain
+skinparam componentStyle uml2
+title SDA-Pro — SOA Component & Deployment Architecture
+
+actor "SOC Analyst" as Analyst
+cloud "External Systems" {
+[Splunk SIEM] as Splunk
+[CrowdStrike EDR] as CrowdStrike
+[Firewall] as Firewall
+[VirusTotal API] as VT
+[MISP] as MISP
+[Email Gateway] as Email
+[Slack] as Slack
+}
+
+node "Infrastructure" #LightGray {
+[RabbitMQ/Kafka] as MessageBus
+database "PostgreSQL" as Postgres
+database "MongoDB" as Mongo
+database "Redis" as Redis
+}
+
+package "SOA Services" #LightBlue {
+[Alert Ingestion Service] as AIS
+[Enrichment Service] as ECS
+[Incident Management] as IMS
+[Response Orchestration] as ROS
+[Threat Intel Service] as TIS
+[Notification Service] as NS
+[Audit Service] as AS
+[Identity Service] as IS
+}
+
+package "SOC Dashboard (MVC)" #AliceBlue {
+[React/Vue Views]
+[REST Controllers]
+[API Models]
+}
+
+Analyst ..> "React/Vue Views" : monitors & responds
+Splunk ..> AIS : webhook / poll
+CrowdStrike ..> AIS : API
+Firewall ..> AIS : syslog
+
+AIS --> ECS : gRPC
+ECS --> IMS : gRPC
+ROS --> TIS : gRPC
+ROS --> NS : REST
+
+AIS ..> MessageBus : events
+ECS ..> MessageBus : events
+IMS ..> MessageBus : events
+ROS ..> MessageBus : events
+
+MessageBus ..> "React/Vue Views" : push updates
+MessageBus ..> AS : audit events
+
+TIS --> VT : HTTPS
+TIS --> MISP : HTTPS
+NS --> Email : SMTP
+NS --> Slack : HTTPS
+
+AIS ..> Postgres
+AIS ..> Mongo
+ECS ..> Mongo
+IMS ..> Postgres
+AS ..> Postgres
+IS ..> Postgres
+TIS ..> Redis
+
+@enduml

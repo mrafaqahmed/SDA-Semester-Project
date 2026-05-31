@@ -1,0 +1,110 @@
+@startuml SDA-Pro_Class_Diagram
+!theme plain
+skinparam packageStyle rectangle
+skinparam linetype ortho
+title SDA-Pro — Comprehensive Class Diagram (All 12 Patterns)
+
+' PACKAGE: domain.alert — Composite Pattern
+package "domain.alert (Composite)" #LightCoral {
+interface AlertComponent {
++getId(): UUID
++getSeverity(): Severity
++getTimestamp(): Instant
++accept(visitor: AlertVisitor): void
++add(component: AlertComponent): void
++remove(component: AlertComponent): void
++getChildren(): List<AlertComponent>
+}
+
+abstract class AbstractAlert {
+-id: UUID
+-severity: Severity
+-timestamp: Instant
+-source: AlertSource
++getId(): UUID
++getSeverity(): Severity
+}
+
+class SingleAlert {
+-rawPayload: JsonNode
+-normalizedData: CanonicalAlert
++accept(visitor: AlertVisitor): void
+}
+
+class AlertCampaign {
+-campaignName: String
+-attackPattern: String
+-children: List<AlertComponent>
++add(component: AlertComponent): void
++remove(component: AlertComponent): void
++getChildren(): List<AlertComponent>
++accept(visitor: AlertVisitor): void
++getMaxSeverity(): Severity
+}
+
+class IncidentCluster {
+-clusterId: UUID
+-correlationRule: String
+-children: List<AlertComponent>
++add(component: AlertComponent): void
++remove(component: AlertComponent): void
++getChildren(): List<AlertComponent>
++accept(visitor: AlertVisitor): void
+}
+
+AlertComponent <|-- AbstractAlert
+AbstractAlert <|-- SingleAlert
+AbstractAlert <|-- AlertCampaign
+AbstractAlert <|-- IncidentCluster
+AlertCampaign "0..*" o-- "1" AlertComponent : children >
+IncidentCluster "0..*" o-- "1" AlertComponent : children >
+}
+
+' PACKAGE: domain.incident — State Pattern
+package "domain.incident (State)" #LightBlue {
+class Incident {
+-id: UUID
+-currentState: IncidentState
+-affectedAlerts: AlertComponent
+-createdAt: Instant
++setState(state: IncidentState): void
++beginTriage(analystId: UUID): void
++initiateContainment(actions: List<ResponseAction>): void
++beginEradication(): void
++beginRecovery(): void
++close(report: PostIncidentReport): void
++escalate(reason: String): void
++getState(): IncidentState
+}
+
+interface IncidentState {
++beginTriage(incident: Incident, analystId: UUID): void
++initiateContainment(incident: Incident, actions: List<ResponseAction>): void
++beginEradication(incident: Incident): void
++beginRecovery(incident: Incident): void
++close(incident: Incident, report: PostIncidentReport): void
++escalate(incident: Incident, reason: String): void
++getName(): String
++getAllowedActions(): List<ResponseActionType>
+}
+
+class NewState
+class UnderTriageState
+class ContainmentState
+class EradicationState
+class RecoveryState
+class PostIncidentReviewState
+class ClosedState
+
+Incident --> IncidentState
+IncidentState <|.. NewState
+IncidentState <|.. UnderTriageState
+IncidentState <|.. ContainmentState
+IncidentState <|.. EradicationState
+IncidentState <|.. RecoveryState
+IncidentState <|.. PostIncidentReviewState
+IncidentState <|.. ClosedState
+}
+
+' Complete class diagram continues...
+@enduml

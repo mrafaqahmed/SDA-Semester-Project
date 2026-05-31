@@ -1,0 +1,43 @@
+@startuml SDA-Pro_Sequence_Alerts
+!theme plain
+autonumber
+title SDA-Pro: Alert Ingestion Pipeline (Composite, Factory, CoR, State)
+
+participant Splunk
+participant AlertIngestionService as AIS
+participant AlertNormalizerFactory as Factory
+participant SplunkNormalizer as Normalizer
+participant EnrichmentPipeline as Pipeline
+participant DeduplicationHandler as H1
+participant GeoIPHandler as H2
+participant ThreatIntelHandler as H3
+participant IncidentManagementService as IMS
+participant EventBusPublisher as EventBus
+database DB
+
+Splunk -> AIS: POST /ingest (webhook)
+AIS -> Factory: createNormalizer(SPLUNK)
+Factory -> Normalizer: new SplunkNormalizer()
+Factory --> AIS: normalizer
+AIS -> Normalizer: normalize(rawPayload)
+Normalizer --> AIS: CanonicalAlert
+
+AIS -> Pipeline: enrich(canonicalAlert)
+Pipeline -> H1: handle(alert)
+H1 -> H1: deduplicateCheck()
+H1 -> H2: doHandle(alert)
+H2 -> H2: enrichGeoIP()
+H2 -> H3: doHandle(alert)
+H3 -> H3: enrichThreatIntel()
+H3 --> Pipeline: EnrichmentResult
+
+Pipeline --> AIS: enrichedAlert
+AIS -> IMS: createIncident(enrichedAlert)
+IMS -> IMS: new Incident()
+IMS -> IMS: setState(NewState)
+IMS -> DB: persist()
+
+IMS -> EventBus: publishIncidentCreated(incident)
+EventBus --> DB: audit trail
+
+@enduml

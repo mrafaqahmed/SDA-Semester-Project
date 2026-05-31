@@ -1,0 +1,253 @@
+version: '3.9'
+
+services:
+  # Infrastructure Layer — Relational Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: sda-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sdapro}
+      POSTGRES_USER: ${POSTGRES_USER:-sdapro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sdapro_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/migration:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - sda-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sdapro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Infrastructure Layer — Document Database
+  mongo:
+    image: mongo:6
+    container_name: sda-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-sdapro}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-sdapro_secret}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - sda-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Infrastructure Layer — Cache & Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: sda-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sda-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Infrastructure Layer — Message Bus (Event-Driven/Observer)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: sda-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - sda-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SOA Services (8 total)
+  alert-ingestion:
+    build: ./services/alert-ingestion-service
+    container_name: sda-alert-ingestion
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sdapro}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sdapro}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sdapro_secret}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  enrichment-correlation:
+    build: ./services/enrichment-correlation-service
+    container_name: sda-enrichment
+    ports:
+      - "8082:8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-sdapro}:${MONGO_PASSWORD:-sdapro_secret}@mongo:27017/sdapro
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+      REDIS_HOST: redis
+    networks:
+      - sda-network
+
+  incident-management:
+    build: ./services/incident-management-service
+    container_name: sda-incident-mgmt
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sdapro}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sdapro}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sdapro_secret}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  response-orchestration:
+    build: ./services/response-orchestration-service
+    container_name: sda-response-orch
+    ports:
+      - "8084:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sdapro}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sdapro}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sdapro_secret}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  threat-intel:
+    build: ./services/threat-intel-service
+    container_name: sda-threat-intel
+    ports:
+      - "8085:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  notification:
+    build: ./services/notification-service
+    container_name: sda-notification
+    ports:
+      - "8086:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  audit:
+    build: ./services/audit-service
+    container_name: sda-audit
+    ports:
+      - "8087:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sdapro}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sdapro}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sdapro_secret}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  identity:
+    build: ./services/identity-service
+    container_name: sda-identity
+    ports:
+      - "8088:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-sdapro}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-sdapro_secret}
+    networks:
+      - sda-network
+
+  # SOC Dashboard (MVC)
+  dashboard:
+    build: ./soc-dashboard
+    container_name: sda-dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      - incident-management
+      - alert-ingestion
+      - audit
+    networks:
+      - sda-network
+    environment:
+      REACT_APP_API_BASE_URL: http://localhost:8083
+      REACT_APP_INCIDENT_SERVICE_URL: http://localhost:8083
+      REACT_APP_AUDIT_SERVICE_URL: http://localhost:8087
+
+networks:
+  sda-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:

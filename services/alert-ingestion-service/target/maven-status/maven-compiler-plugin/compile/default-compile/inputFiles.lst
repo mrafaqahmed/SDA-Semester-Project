@@ -1,0 +1,6 @@
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\AlertIngestionApplication.java
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\config\RabbitConfig.java
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\controller\IngestionController.java
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\domain\AlertEntity.java
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\repo\AlertRepository.java
+C:\Users\AfaqAhmed\Desktop\New folder (7)\services\alert-ingestion-service\src\main\java\com\sdapro\ingestion\service\AlertService.java

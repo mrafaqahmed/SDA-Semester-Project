@@ -1,0 +1,6 @@
+com\sdapro\ingestion\domain\AlertEntity.class
+com\sdapro\ingestion\service\AlertService.class
+com\sdapro\ingestion\AlertIngestionApplication.class
+com\sdapro\ingestion\config\RabbitConfig.class
+com\sdapro\ingestion\controller\IngestionController.class
+com\sdapro\ingestion\repo\AlertRepository.class

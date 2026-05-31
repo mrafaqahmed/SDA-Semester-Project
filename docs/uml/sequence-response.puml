@@ -1,0 +1,54 @@
+@startuml SDA-Pro_Sequence_Response
+!theme plain
+autonumber
+title SDA-Pro: Response Orchestration (Facade, Strategy, Decorator, State)
+
+actor Analyst
+participant Dashboard
+participant ResponseOrchestrationService as ROS
+participant IncidentResponseFacade as Facade
+participant ResponseStrategySelector as StratSel
+participant AggressiveStrategy as Strat
+participant ResponseActionFactory as Factory
+participant BlockIPAction as Action
+participant AuditLogDecorator as Dec1
+participant ApprovalGateDecorator as Dec2
+participant ThreatIntelProxy as Proxy
+participant EventBusPublisher as EventBus
+
+Analyst -> Dashboard: Click "Execute Response"
+Dashboard -> ROS: POST /respond/{incidentId}
+ROS -> Facade: assessAndRespond(incidentId)
+
+Facade -> Facade: loadIncident()
+Facade -> StratSel: selectStrategy(incident)
+StratSel -> StratSel: evaluateSeverity(CRITICAL)
+StratSel --> Facade: AggressiveStrategy
+
+Facade -> Strat: determineActions(incident)
+Strat --> Facade: [BlockIPAction, IsolateEndpoint]
+
+loop For each action
+Facade -> Factory: createAction(BLOCK_IP)
+Factory --> Facade: action
+
+Facade -> Dec2: new ApprovalGateDecorator(action)
+Facade -> Dec1: new AuditLogDecorator(dec2)
+
+Facade -> Dec1: execute(target)
+Dec1 -> Dec1: preAuditLog()
+Dec1 -> Dec2: execute(target)
+Dec2 -> Dec2: checkApproval()
+Dec2 -> Action: execute(target)
+Action -> Proxy: blockIP(ip)
+Proxy --> Action: success
+Action --> Dec2: outcome
+Dec2 --> Dec1: outcome
+Dec1 -> Dec1: postAuditLog()
+Dec1 --> Facade: outcome
+end
+
+Facade -> EventBus: publishResponseActionExecuted(incident)
+EventBus --> Dashboard: WebSocket push
+
+@enduml

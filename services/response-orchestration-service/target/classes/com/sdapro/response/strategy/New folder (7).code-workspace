@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../../../.."
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"docker compose": true
+		},
+		"java.compile.nullAnalysis.mode": "automatic",
+		"java.configuration.updateBuildConfiguration": "interactive"
+	}
+}

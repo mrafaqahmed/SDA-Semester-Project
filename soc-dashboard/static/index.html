@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDA-PRO Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #020617;
+      --panel: rgba(15, 23, 42, 0.88);
+      --panel-border: rgba(59, 130, 246, 0.18);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #4ade80;
+      --warning: #f59e0b;
+      --danger: #f87171;
+      --shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 20%),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 24%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      margin: 0 0 0.35rem;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid var(--panel-border);
+      background: rgba(15, 23, 42, 0.6);
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 0.9rem;
+      height: 0.9rem;
+      border-radius: 999px;
+      background: var(--warning);
+      display: inline-block;
+    }
+
+    .status-dot.up { background: var(--success); }
+    .status-dot.down { background: var(--danger); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 20px;
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      padding: 1rem 1.1rem;
+    }
+
+    .panel h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.1rem;
+    }
+
+    .panel .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .panel .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-top: 0.35rem;
+    }
+
+    .panel .meta {
+      margin-top: 0.6rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+      gap: 1rem;
+    }
+
+    .incident-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .incident-item {
+      padding: 1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.76);
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: start;
+      flex-wrap: wrap;
+      margin-bottom: 0.6rem;
+    }
+
+    .incident-item h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .incident-item p {
+      margin: 0.35rem 0 0;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge.status-open { background: rgba(74, 222, 128, 0.14); color: #86efac; }
+    .badge.status-investigating { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+    .badge.status-resolved { background: rgba(56, 189, 248, 0.14); color: #7dd3fc; }
+    .badge.priority-high { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+    .badge.priority-medium { background: rgba(251, 191, 36, 0.14); color: #fde68a; }
+    .badge.priority-low { background: rgba(74, 222, 128, 0.14); color: #86efac; }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 0.8rem 1rem;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+    }
+
+    button:hover {
+      filter: brightness(1.03);
+    }
+
+    .empty-state {
+      padding: 1rem;
+      border-radius: 16px;
+      border: 1px dashed rgba(148, 163, 184, 0.28);
+      color: var(--muted);
+    }
+
+    .error-state {
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.22);
+      border-color: rgba(248, 113, 113, 0.28);
+      padding: 1rem;
+      border-radius: 16px;
+    }
+
+    .footer-note {
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <div>
+        <p class="status-pill"><span id="healthDot" class="status-dot"></span><span id="healthLabel">Loading status…</span></p>
+        <h1>SDA-PRO SOC Dashboard</h1>
+        <p>Live system visibility for backend health, incident activity, and operational status.</p>
+      </div>
+      <div class="actions">
+        <button id="refreshButton" type="button">Refresh dashboard</button>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="panel">
+        <div class="label">System health</div>
+        <div id="healthSummary" class="value">Loading…</div>
+        <div id="healthDetails" class="meta">Checking the dashboard backend connection.</div>
+      </div>
+      <div class="panel">
+        <div class="label">Open incidents</div>
+        <div id="openIncidents" class="value">0</div>
+        <div class="meta">Count of unresolved incidents currently visible.</div>
+      </div>
+      <div class="panel">
+        <div class="label">High priority</div>
+        <div id="highPriority" class="value">0</div>
+        <div class="meta">Incidents tagged with high priority or escalation risk.</div>
+      </div>
+      <div class="panel">
+        <div class="label">Last updated</div>
+        <div id="lastUpdated" class="value">—</div>
+        <div class="meta">Auto-refreshes every 30 seconds.</div>
+      </div>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="panel">
+        <h2>Recent incidents</h2>
+        <div id="incidentsList" class="incident-list">
+          <div class="empty-state">Loading incidents…</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Operational notes</h2>
+        <p class="meta">This dashboard now calls the backend services directly and refreshes its status automatically.</p>
+        <p id="operationsMessage" class="meta">Waiting for the latest status update.</p>
+        <div class="footer-note">If the backend is unavailable, the dashboard will show a friendly error instead of a broken page.</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
